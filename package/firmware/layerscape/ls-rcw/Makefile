@@ -6,87 +6,62 @@
 #
 
 include $(TOPDIR)/rules.mk
-include $(INCLUDE_DIR)/image.mk
 
 PKG_NAME:=ls-rcw
-PKG_SOURCE_DATE:=2017-12-01
-PKG_RELEASE:=1
+PKG_VERSION:=LSDK-20.04-update-290520
+PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/qoriq-open-source/rcw.git
-PKG_SOURCE_VERSION:=cbd5e66fcb850e821c8632578410ceba5733a49e
-PKG_MIRROR_HASH:=4caad5e0ae2018a0a594f36e46e4a96698420956c64bb73656f380fd46733c3d
-
-PKG_BUILD_DIR=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
-
-PKG_LICENSE:=BSD-3-Clause
-PKG_LICENSE_FILES:=LICENSE
-
-PKG_FLAGS:=nonshared
+PKG_SOURCE_URL:=https://source.codeaurora.org/external/qoriq/qoriq-components/rcw
+PKG_SOURCE_VERSION:=e0fab6d9b61003caef577f7474c2fac61e6ba2ff
+PKG_MIRROR_HASH:=b6bc66e27b7c6db31101fdc2e6be7255181861bd38d8f25eb5eb80c468983eb2
 
 include $(INCLUDE_DIR)/package.mk
 
-define rcw/Default
-	TITLE:=
-	CONFIG:=
+define Package/layerscape-rcw
+  SECTION:=firmware
+  CATEGORY:=Firmware
+  TITLE:=NXP Layerscape RCW binaries
+  DEPENDS:=@TARGET_layerscape
 endef
 
-define rcw/ls1043ardb
-	TITLE=RCW binary $(PKG_VERSION) for NXP ls1043ardb 64b/32b Dev Board
-	CONFIG=ls1043ardb/RR_FQPP_1455/rcw_1600.bin
-endef
+BOARDS := \
+  ls1012a-rdb \
+  ls1012a-frdm \
+  ls1012a-frwy-sdboot \
+  ls1043a-rdb \
+  ls1043a-rdb-sdboot \
+  ls1046a-frwy \
+  ls1046a-frwy-sdboot \
+  ls1046a-rdb \
+  ls1046a-rdb-sdboot \
+  ls1088a-rdb \
+  ls1088a-rdb-sdboot \
+  ls2088a-rdb \
+  lx2160a-rdb \
+  lx2160a-rdb-sdboot \
+  ls1021a-twr
 
-define rcw/ls1046ardb
-	TITLE=RCW binary $(PKG_VERSION) for NXP ls1046ardb 64b/32b Dev Board
-	CONFIG=ls1046ardb/RR_FFSSPPPH_1133_5559/rcw_1800_qspiboot.bin.swap
-endef
+RCW_ls1012a-rdb         :=ls1012ardb/R_SPNH_3508/rcw_1000_default.bin
+RCW_ls1012a-frdm        :=ls1012afrdm/N_SSNP_3305/rcw_800.bin
+RCW_ls1012a-frwy-sdboot :=ls1012afrwy/N_SSNP_3305/rcw_1000_default.bin
+RCW_ls1043a-rdb         :=ls1043ardb/RR_FQPP_1455/rcw_1600.bin
+RCW_ls1043a-rdb-sdboot  :=ls1043ardb/RR_FQPP_1455/rcw_1600_sdboot.bin
+RCW_ls1046a-frwy        :=ls1046afrwy/NN_NNQNNPNP_3040_0506/rcw_1600_qspiboot.bin
+RCW_ls1046a-frwy-sdboot :=ls1046afrwy/NN_NNQNNPNP_3040_0506/rcw_1600_sdboot.bin
+RCW_ls1046a-rdb         :=ls1046ardb/RR_FFSSPPPH_1133_5559/rcw_1800_qspiboot.bin
+RCW_ls1046a-rdb-sdboot  :=ls1046ardb/RR_FFSSPPPH_1133_5559/rcw_1800_sdboot.bin
+RCW_ls1088a-rdb         :=ls1088ardb/FCQQQQQQQQ_PPP_H_0x1d_0x0d/rcw_1600_qspi.bin
+RCW_ls1088a-rdb-sdboot  :=ls1088ardb/FCQQQQQQQQ_PPP_H_0x1d_0x0d/rcw_1600_sd.bin
+RCW_ls2088a-rdb         :=ls2088ardb/FFFFFFFF_PP_HH_0x2a_0x41/rcw_1800.bin
+RCW_lx2160a-rdb         :=lx2160ardb_rev2/XGGFF_PP_HHHH_RR_19_5_2/rcw_2000_700_2900_19_5_2.bin
+RCW_lx2160a-rdb-sdboot  :=lx2160ardb_rev2/XGGFF_PP_HHHH_RR_19_5_2/rcw_2000_700_2900_19_5_2.bin
+RCW_ls1021a-twr         :=ls1021atwr/SSR_PNS_30/rcw_1200.bin
 
-RCWS := \
-	ls1043ardb \
-	ls1046ardb
-
-define Package/rcw/template
-define Package/rcw-layerscape-$(1)
-	SECTION:=firmware
-	CATEGORY:=Firmware
-	DEPENDS:= @TARGET_layerscape
-	TITLE:=$(2)
-	URL:=http://git.freescale.com/git/cgit.cgi/ppc/sdk/rcw.git
-	VARIANT:=$(1)
-	MAINTAINER:=Jiang Yutang <jiangyutang1978@gmail.com>
-endef
-endef
-
-define BuildRCWPackage
-	$(eval $(rcw/Default))
-	$(eval $(rcw/$(1)))
-	$(call Package/rcw/template,$(1),$(TITLE))
-endef
-
-ifdef BUILD_VARIANT
-$(eval $(call rcw/$(BUILD_VARIANT)))
-RCW_CONFIG:=$(if $(CONFIG),$(CONFIG),$(BUILD_VARIANT))
-endif
-
-define Build/Configure
-endef
-
-define Package/rcw/install/default
+define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)
-	$(CP) $(PKG_BUILD_DIR)/$(RCW_CONFIG) $(STAGING_DIR_IMAGE)/$(1)-rcw.bin
+	$(foreach board,$(BOARDS), \
+		$(CP) $(PKG_BUILD_DIR)/$(RCW_$(board)) $(STAGING_DIR_IMAGE)/fsl_$(board)-rcw.bin;)
 endef
 
-define Package/rcw/install/template
-define Package/rcw-layerscape-$(1)/install
-	$(call Package/rcw/install/default,$(2))
-endef
-endef
-
-$(foreach r,$(RCWS), \
-	$(eval $(call Package/rcw/install/template,$(r),$(r))) \
-)
-
-$(foreach r,$(RCWS), \
-	$(eval $(call BuildRCWPackage,$(r))) \
-	$(eval $(call BuildPackage,rcw-layerscape-$(r))) \
-)
+$(eval $(call BuildPackage,layerscape-rcw))

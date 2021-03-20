@@ -187,7 +187,6 @@ static inline void u64_add_u32(ppe_u64_t, unsigned int, ppe_u64_t *);
  */
 static inline struct sk_buff* alloc_skb_rx(void);
 static inline struct sk_buff* alloc_skb_tx(unsigned int);
-struct sk_buff* atm_alloc_tx(struct atm_vcc *, unsigned int);
 static inline void atm_free_tx_skb_vcc(struct sk_buff *, struct atm_vcc *);
 static inline struct sk_buff *get_skb_rx_pointer(unsigned int);
 static inline int get_tx_desc(unsigned int);
@@ -261,8 +260,6 @@ EXPORT_SYMBOL(ifx_mei_atm_showtime_exit);
 
 #endif
 
-static struct sk_buff* (*ifx_atm_alloc_tx)(struct atm_vcc *, unsigned int) = NULL;
-
 static struct atm_priv_data g_atm_priv_data;
 
 static struct atmdev_ops g_ifx_atm_ops = {
@@ -292,9 +289,9 @@ static int ppe_ioctl(struct atm_dev *dev, unsigned int cmd, void *arg)
 		return -ENOTTY;
 
 	if ( _IOC_DIR(cmd) & _IOC_READ )
-		ret = !access_ok(VERIFY_WRITE, arg, _IOC_SIZE(cmd));
+		ret = !access_ok(arg, _IOC_SIZE(cmd));
 	else if ( _IOC_DIR(cmd) & _IOC_WRITE )
-		ret = !access_ok(VERIFY_READ, arg, _IOC_SIZE(cmd));
+		ret = !access_ok(arg, _IOC_SIZE(cmd));
 	if ( ret )
 		return -EFAULT;
 
@@ -430,8 +427,6 @@ static int ppe_open(struct atm_vcc *vcc)
 
 	/*  enable irq  */
 	if ( f_enable_irq ) {
-		ifx_atm_alloc_tx = atm_alloc_tx;
-
 		*MBOX_IGU1_ISRC = (1 << RX_DMA_CH_AAL) | (1 << RX_DMA_CH_OAM);
 		*MBOX_IGU1_IER  = (1 << RX_DMA_CH_AAL) | (1 << RX_DMA_CH_OAM);
 
@@ -480,10 +475,8 @@ static void ppe_close(struct atm_vcc *vcc)
 	clear_bit(conn, &g_atm_priv_data.conn_table);
 
 	/*  disable irq */
-	if ( g_atm_priv_data.conn_table == 0 ) {
+	if ( g_atm_priv_data.conn_table == 0 )
 		disable_irq(PPE_MAILBOX_IGU1_INT);
-		ifx_atm_alloc_tx = NULL;
-	}
 
 	/*  release bandwidth   */
 	switch ( vcc->qos.txtp.traffic_class )
@@ -782,42 +775,6 @@ static inline struct sk_buff* alloc_skb_tx(unsigned int size)
 	/*  must be burst length alignment  */
 	if ( skb != NULL )
 		skb_reserve(skb, (~((unsigned int)skb->data + (DATA_BUFFER_ALIGNMENT - 1)) & (DATA_BUFFER_ALIGNMENT - 1)) + TX_INBAND_HEADER_LENGTH);
-	return skb;
-}
-
-struct sk_buff* atm_alloc_tx(struct atm_vcc *vcc, unsigned int size)
-{
-	int conn;
-	struct sk_buff *skb;
-
-	/*  oversize packet */
-	if ( size > aal5s_max_packet_size ) {
-		pr_err("atm_alloc_tx: oversize packet\n");
-		return NULL;
-	}
-	/*  send buffer overflow    */
-	if ( sk_wmem_alloc_get(sk_atm(vcc)) && !atm_may_send(vcc, size) ) {
-		pr_err("atm_alloc_tx: send buffer overflow\n");
-		return NULL;
-	}
-	conn = find_vcc(vcc);
-	if ( conn < 0 ) {
-		pr_err("atm_alloc_tx: unknown VCC\n");
-		return NULL;
-	}
-
-	skb = dev_alloc_skb(size);
-	if ( skb == NULL ) {
-		pr_err("atm_alloc_tx: sk buffer is used up\n");
-		return NULL;
-	}
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,13,0))
-	refcount_add(skb->truesize, &sk_atm(vcc)->sk_wmem_alloc);
-#else
-	atomic_add(skb->truesize, &sk_atm(vcc)->sk_wmem_alloc);
-#endif
-
 	return skb;
 }
 
@@ -1820,7 +1777,7 @@ static int ltq_atm_probe(struct platform_device *pdev)
 		goto INIT_PRIV_DATA_FAIL;
 	}
 
-	ops->init();
+	ops->init(pdev);
 	init_rx_tables();
 	init_tx_tables();
 
@@ -1844,11 +1801,7 @@ static int ltq_atm_probe(struct platform_device *pdev)
 	}
 
 	/*  register interrupt handler  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)
 	ret = request_irq(PPE_MAILBOX_IGU1_INT, mailbox_irq_handler, 0, "atm_mailbox_isr", &g_atm_priv_data);
-#else
-	ret = request_irq(PPE_MAILBOX_IGU1_INT, mailbox_irq_handler, IRQF_DISABLED, "atm_mailbox_isr", &g_atm_priv_data);
-#endif
 	if ( ret ) {
 		if ( ret == -EBUSY ) {
 			pr_err("IRQ may be occupied by other driver, please reconfig to disable it.\n");

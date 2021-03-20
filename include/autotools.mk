@@ -1,9 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2007-2012 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
+# Copyright (C) 2007-2020 OpenWrt.org
 
 autoconf_bool = $(patsubst %,$(if $($(1)),--enable,--disable)-%,$(2))
 
@@ -39,7 +36,9 @@ define autoreconf
 				[ -e $(p)/config.rpath ] || \
 						ln -s $(SCRIPT_DIR)/config.rpath $(p)/config.rpath; \
 				touch NEWS AUTHORS COPYING ABOUT-NLS ChangeLog; \
-				$(AM_TOOL_PATHS) $(STAGING_DIR_HOST)/bin/autoreconf -v -f -i -s \
+				$(AM_TOOL_PATHS) \
+					LIBTOOLIZE='$(STAGING_DIR_HOST)/bin/libtoolize --install' \
+					$(STAGING_DIR_HOST)/bin/autoreconf -v -f -i -s \
 					$(if $(word 2,$(3)),--no-recursive) \
 					-B $(STAGING_DIR_HOST)/share/aclocal \
 					$(patsubst %,-I %,$(5)) \
@@ -63,6 +62,12 @@ define patch_libtool
 	);
 endef
 
+define set_libtool_abiver
+	sed -i \
+		-e 's,^soname_spec=.*,soname_spec="\\$$$${libname}\\$$$${shared_ext}.$(PKG_ABI_VERSION)",' \
+		-e 's,^library_names_spec=.*,library_names_spec="\\$$$${libname}\\$$$${shared_ext}.$(PKG_ABI_VERSION) \\$$$${libname}\\$$$${shared_ext}",' \
+		$(PKG_BUILD_DIR)/libtool
+endef
 
 PKG_LIBTOOL_PATHS?=$(CONFIGURE_PATH)
 PKG_AUTOMAKE_PATHS?=$(CONFIGURE_PATH)
@@ -109,6 +114,10 @@ ifneq ($(filter libtool,$(PKG_FIXUP)),)
  ifeq ($(filter no-autoreconf,$(PKG_FIXUP)),)
   Hooks/Configure/Pre += autoreconf_target
  endif
+endif
+
+ifneq ($(filter libtool-abiver,$(PKG_FIXUP)),)
+  Hooks/Configure/Post += set_libtool_abiver
 endif
 
 ifneq ($(filter libtool-ucxx,$(PKG_FIXUP)),)

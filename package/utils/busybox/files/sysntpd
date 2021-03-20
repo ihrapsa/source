@@ -29,14 +29,14 @@ get_dhcp_ntp_servers() {
 }
 
 validate_ntp_section() {
-	uci_validate_section system timeserver "${1}" \
+	uci_load_validate system timeserver "$1" "$2" \
 		'server:list(host)' 'enabled:bool:1' 'enable_server:bool:0' 'use_dhcp:bool:1' 'dhcp_interface:list(string)'
 }
 
-start_service() {
-	local server enabled enable_server use_dhcp dhcp_interface peer
+start_ntpd_instance() {
+	local peer
 
-	validate_ntp_section ntp || {
+	[ "$2" = 0 ] || {
 		echo "validation failed"
 		return 1
 	}
@@ -55,7 +55,23 @@ start_service() {
 		procd_append_param command -p $peer
 	done
 	procd_set_param respawn
+	[ -x /sbin/ujail -a -e /etc/capabilities/ntpd.json ] && {
+		procd_add_jail ntpd ubus
+		procd_add_jail_mount "$HOTPLUG_SCRIPT"
+		procd_add_jail_mount "/usr/share/libubox/jshn.sh"
+		procd_add_jail_mount "/usr/bin/env"
+		procd_add_jail_mount "/usr/bin/jshn"
+		procd_add_jail_mount "/bin/ubus"
+		procd_set_param capabilities /etc/capabilities/ntpd.json
+		procd_set_param user ntp
+		procd_set_param group ntp
+		procd_set_param no_new_privs 1
+	}
 	procd_close_instance
+}
+
+start_service() {
+	validate_ntp_section ntp start_ntpd_instance
 }
 
 service_triggers() {

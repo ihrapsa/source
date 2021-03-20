@@ -9,14 +9,14 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=opkg
-PKG_RELEASE:=2
+PKG_RELEASE:=1
 PKG_FLAGS:=essential
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://git.openwrt.org/project/opkg-lede.git
-PKG_SOURCE_DATE:=2017-12-07
-PKG_SOURCE_VERSION:=3b417b9f41b4ceb5912d82f867dd5534e5675b5c
-PKG_MIRROR_HASH:=1c9c21e56186345d0034d15051c1d9c5ebb5aa6658d6ae8886d8403207a914a3
+PKG_SOURCE_DATE:=2021-03-15
+PKG_SOURCE_VERSION:=5936c4f9660248284e8a9b040ea3153d3ea888de
+PKG_MIRROR_HASH:=b873c209baaf4f150c89646d58e4a0072f807d24b02c320ab8c7ae9180c13240
 
 PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=COPYING
@@ -25,7 +25,7 @@ PKG_MAINTAINER:=Jo-Philipp Wich <jo@mein.io>
 
 # Extend depends from version.mk
 PKG_CONFIG_DEPENDS += \
-	CONFIG_SIGNED_PACKAGES \
+	CONFIG_SIGNATURE_CHECK \
 	CONFIG_TARGET_INIT_PATH
 
 PKG_BUILD_PARALLEL:=1
@@ -88,8 +88,8 @@ define Package/opkg/install
 	$(INSTALL_DATA) ./files/opkg$(2).conf $(1)/etc/opkg.conf
 	$(INSTALL_BIN) ./files/20_migrate-feeds $(1)/etc/uci-defaults/
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/opkg-cl $(1)/bin/opkg
-  ifneq ($(CONFIG_SIGNED_PACKAGES),)
-	echo "option check_signature 1" >> $(1)/etc/opkg.conf
+  ifneq ($(CONFIG_SIGNATURE_CHECK),)
+	echo "option check_signature" >> $(1)/etc/opkg.conf
   endif
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) ./files/opkg-key $(1)/usr/sbin/

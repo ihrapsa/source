@@ -7,37 +7,69 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nftables
-PKG_VERSION:=0.8.2
-PKG_RELEASE:=1
+PKG_VERSION:=0.9.6
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_URL:=https://netfilter.org/projects/$(PKG_NAME)/files
-PKG_HASH:=675f0aaf88f11e7eacef63dc89cb65d207d9e09c3ea6d518f0ebbb013f0767ec
-PKG_MAINTAINER:=Steven Barth <steven@midlink.org>
+PKG_HASH:=68d6fdfe8ab02303e6b1f13968a4022da5b0120110eaee3233d806857937b66e
+PKG_MAINTAINER:=
 PKG_LICENSE:=GPL-2.0
 
 PKG_FIXUP:=autoreconf
+PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
 
 DISABLE_NLS:=
 
 CONFIGURE_ARGS += \
+        --disable-debug \
+        --disable-man-doc \
         --with-mini-gmp \
         --without-cli \
+        --disable-python
 
-define Package/nftables
+define Package/nftables/Default
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Firewall
-  TITLE:=nftables packet filtering userspace utility
+  TITLE:=nftables userspace utility
   DEPENDS:=+kmod-nft-core +libnftnl
   URL:=http://netfilter.org/projects/nftables/
+  PROVIDES:=nftables
 endef
 
-define Package/nftables/install
+define Package/nftables-nojson
+  $(Package/nftables/Default)
+  TITLE+= no JSON support
+  VARIANT:=nojson
+  DEFAULT_VARIANT:=1
+endef
+
+define Package/nftables-json
+  $(Package/nftables/Default)
+  TITLE+= with JSON support
+  VARIANT:=json
+  DEPENDS+=+jansson
+endef
+
+ifeq ($(BUILD_VARIANT),json)
+  CONFIGURE_ARGS += --with-json
+endif
+
+TARGET_CFLAGS += -flto
+TARGET_LDFLAGS += -flto
+
+define Package/nftables/install/Default
 	$(INSTALL_DIR) $(1)/usr/sbin
-	$(CP) $(PKG_BUILD_DIR)/src/nft $(1)/usr/sbin/
+	$(CP) $(PKG_INSTALL_DIR)/usr/sbin/nft $(1)/usr/sbin/
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/*.so* $(1)/usr/lib/
 endef
 
-$(eval $(call BuildPackage,nftables))
+Package/nftables-nojson/install = $(Package/nftables/install/Default)
+Package/nftables-json/install = $(Package/nftables/install/Default)
+
+$(eval $(call BuildPackage,nftables-nojson))
+$(eval $(call BuildPackage,nftables-json))

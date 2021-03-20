@@ -1,9 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2006-2012 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
+# Copyright (C) 2006-2020 OpenWrt.org
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/prereq.mk
@@ -14,8 +11,8 @@ PKG_NAME:=Build dependency
 
 # Required for the toolchain
 $(eval $(call TestHostCommand,working-make, \
-	Please install GNU make v3.81 or later. (This version has bugs), \
-	$(MAKE) -v | grep -E 'Make (3\.8[1-9]|3\.9[0-9]|[4-9]\.)'))
+	Please install GNU make v3.82 or later. (This version has bugs), \
+	$(MAKE) -v | grep -E 'Make (3\.8[2-9]|3\.9[0-9]|[4-9]\.)'))
 
 $(eval $(call TestHostCommand,case-sensitive-fs, \
 	OpenWrt can only be built on a case-sensitive filesystem, \
@@ -24,20 +21,14 @@ $(eval $(call TestHostCommand,case-sensitive-fs, \
 
 $(eval $(call TestHostCommand,proper-umask, \
 	Please build with umask 022 - other values produce broken packages, \
-	umask | grep -xE 00[012][012]))
+	umask | grep -xE 0?0[012][012]))
 
+ifndef IB
 $(eval $(call SetupHostCommand,gcc, \
-	Please install the GNU C Compiler (gcc) 4.8 or later \
-	$(CC) -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?)', \
-	gcc -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?)', \
-	gcc48 --version | grep gcc, \
-	gcc49 --version | grep gcc, \
-	gcc5 --version | grep gcc, \
-	gcc6 --version | grep gcc, \
-	gcc7 --version | grep gcc, \
-	gcc8 --version | grep gcc, \
-	gcc9 --version | grep gcc, \
-	gcc --version | grep Apple.LLVM ))
+	Please install the GNU C Compiler (gcc) 4.8 or later, \
+	$(CC) -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?|1[0-9]\.?)', \
+	gcc -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?|1[0-9]\.?)', \
+	gcc --version | grep -E 'Apple.(LLVM|clang)' ))
 
 $(eval $(call TestHostCommand,working-gcc, \
 	\nPlease reinstall the GNU C Compiler (4.8 or later) - \
@@ -46,17 +37,10 @@ $(eval $(call TestHostCommand,working-gcc, \
 		gcc -x c -o $(TMP_DIR)/a.out -))
 
 $(eval $(call SetupHostCommand,g++, \
-	Please install the GNU C++ Compiler (g++) 4.8 or later \
-	$(CXX) -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?)', \
-	g++ -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?)', \
-	g++48 --version | grep g++, \
-	g++49 --version | grep g++, \
-	g++5 --version | grep g++, \
-	g++6 --version | grep g++, \
-	g++7 --version | grep g++, \
-	g++8 --version | grep g++, \
-	g++9 --version | grep g++, \
-	g++ --version | grep Apple.LLVM ))
+	Please install the GNU C++ Compiler (g++) 4.8 or later, \
+	$(CXX) -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?|1[0-9]\.?)', \
+	g++ -dumpversion | grep -E '^(4\.[8-9]|[5-9]\.?|1[0-9]\.?)', \
+	g++ --version | grep -E 'Apple.(LLVM|clang)' ))
 
 $(eval $(call TestHostCommand,working-g++, \
 	\nPlease reinstall the GNU C++ Compiler (4.8 or later) - \
@@ -69,12 +53,17 @@ $(eval $(call TestHostCommand,ncurses, \
 	Please install ncurses. (Missing libncurses.so or ncurses.h), \
 	echo 'int main(int argc, char **argv) { initscr(); return 0; }' | \
 		gcc -include ncurses.h -x c -o $(TMP_DIR)/a.out - -lncurses))
+endif # IB
 
 ifeq ($(HOST_OS),Linux)
   zlib_link_flags := -Wl,-Bstatic -lz -Wl,-Bdynamic
 else
   zlib_link_flags := -lz
 endif
+
+$(eval $(call TestHostCommand,perl-data-dumper, \
+	Please install the Perl Data::Dumper module, \
+	perl -MData::Dumper -e 1))
 
 $(eval $(call TestHostCommand,perl-thread-queue, \
 	Please install the Perl Thread::Queue module, \
@@ -93,6 +82,11 @@ $(eval $(call SetupHostCommand,find,Please install GNU 'find', \
 $(eval $(call SetupHostCommand,bash,Please install GNU 'bash', \
 	bash --version 2>&1 | grep GNU))
 
+$(eval $(call SetupHostCommand,xargs, \
+	Please install 'xargs' that supports '-r/--no-run-if-empty', \
+	gxargs -r --version, \
+	xargs -r --version))
+
 $(eval $(call SetupHostCommand,patch,Please install GNU 'patch', \
 	gpatch --version 2>&1 | grep 'Free Software Foundation', \
 	patch --version 2>&1 | grep 'Free Software Foundation'))
@@ -105,9 +99,9 @@ $(eval $(call SetupHostCommand,cp,Please install GNU fileutils, \
 	gcp --help 2>&1 | grep 'Copy SOURCE', \
 	cp --help 2>&1 | grep 'Copy SOURCE'))
 
-$(eval $(call SetupHostCommand,seq,, \
+$(eval $(call SetupHostCommand,seq,Please install seq, \
 	gseq --version, \
-	seq --version))
+	seq --version 2>&1 | grep seq))
 
 $(eval $(call SetupHostCommand,awk,Please install GNU 'awk', \
 	gawk --version 2>&1 | grep GNU, \
@@ -117,11 +111,15 @@ $(eval $(call SetupHostCommand,grep,Please install GNU 'grep', \
 	ggrep --version 2>&1 | grep GNU, \
 	grep --version 2>&1 | grep GNU))
 
+$(eval $(call SetupHostCommand,egrep,Please install GNU 'grep', \
+	gegrep --version 2>&1 | grep GNU, \
+	egrep --version 2>&1 | grep GNU))
+
 $(eval $(call SetupHostCommand,getopt, \
 	Please install an extended getopt version that supports --long, \
 	gnugetopt -o t --long test -- --test | grep '^ *--test *--', \
-	/usr/local/bin/getopt -o t --long test -- --test | grep '^ *--test *--', \
-	getopt -o t --long test -- --test | grep '^ *--test *--'))
+	getopt -o t --long test -- --test | grep '^ *--test *--', \
+	/usr/local/opt/gnu-getopt/bin/getopt -o t --long test -- --test | grep '^ *--test *--'))
 
 $(eval $(call SetupHostCommand,stat,Cannot find a file stat utility, \
 	gnustat -c%s $(TOPDIR)/Makefile, \
@@ -138,24 +136,38 @@ $(eval $(call SetupHostCommand,bzip2,Please install 'bzip2', \
 $(eval $(call SetupHostCommand,wget,Please install GNU 'wget', \
 	wget --version | grep GNU))
 
-$(eval $(call SetupHostCommand,time,Please install GNU 'time' or BusyBox 'time' that supports -f, \
-	gtime --version 2>&1 | grep GNU, \
-	time --version 2>&1 | grep GNU, \
-	busybox time 2>&1 | grep -- '-f FMT'))
-
 $(eval $(call SetupHostCommand,perl,Please install Perl 5.x, \
 	perl --version | grep "perl.*v5"))
 
-$(eval $(call SetupHostCommand,python,Please install Python 2.x, \
-	python2.7 -V 2>&1 | grep Python, \
-	python2 -V 2>&1 | grep Python, \
-	python -V 2>&1 | grep Python))
+$(eval $(call CleanupPython2))
+
+$(eval $(call SetupHostCommand,python,Please install Python >= 3.5, \
+	python3.9 -V 2>&1 | grep 'Python 3', \
+	python3.8 -V 2>&1 | grep 'Python 3', \
+	python3.7 -V 2>&1 | grep 'Python 3', \
+	python3.6 -V 2>&1 | grep 'Python 3', \
+	python3.5 -V 2>&1 | grep 'Python 3', \
+	python3 -V 2>&1 | grep -E 'Python 3\.[5-9]\.?'))
+
+$(eval $(call SetupHostCommand,python3,Please install Python >= 3.5, \
+	python3.9 -V 2>&1 | grep 'Python 3', \
+	python3.8 -V 2>&1 | grep 'Python 3', \
+	python3.7 -V 2>&1 | grep 'Python 3', \
+	python3.6 -V 2>&1 | grep 'Python 3', \
+	python3.5 -V 2>&1 | grep 'Python 3', \
+	python3 -V 2>&1 | grep -E 'Python 3\.[5-9]\.?'))
 
 $(eval $(call SetupHostCommand,git,Please install Git (git-core) >= 1.7.12.2, \
 	git --exec-path | xargs -I % -- grep -q -- --recursive %/git-submodule))
 
 $(eval $(call SetupHostCommand,file,Please install the 'file' package, \
 	file --version 2>&1 | grep file))
+
+$(eval $(call SetupHostCommand,rsync,Please install 'rsync', \
+	rsync --version </dev/null))
+
+$(eval $(call SetupHostCommand,which,Please install 'which', \
+	which which | grep which))
 
 $(STAGING_DIR_HOST)/bin/mkhash: $(SCRIPT_DIR)/mkhash.c
 	mkdir -p $(dir $@)

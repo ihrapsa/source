@@ -4,11 +4,11 @@
 START=97
 USE_PROCD=1
 
-EXTRA_COMMANDS="status lucistat"
-EXTRA_HELP="	status  Get DSL status information
-	lucistat  Get status information if lua friendly format"
+dslstat() {
+	ubus call dsl metrics
+}
 
-[ -f /lib/functions/lantiq_dsl.sh ] && . /lib/functions/lantiq_dsl.sh
+extra_command "dslstat" "Get DSL status information"
 
 #
 # ITU-T G.997.1 (06/2012) - Section 7.3.1.1.1 (xTU transmission system enabling (XTSE))
@@ -252,7 +252,9 @@ start_service() {
 				fi
 				;;
 			b*|j*)
-				if [ -f "/lib/firmware/lantiq-vrx200-b.bin" ]; then
+				if [ -f "/lib/firmware/vr9_dsl_fw_annex_b.bin" ]; then
+					firmware="/lib/firmware/vr9_dsl_fw_annex_b.bin"
+				elif [ -f "/lib/firmware/lantiq-vrx200-b.bin" ]; then
 					firmware="/lib/firmware/lantiq-vrx200-b.bin"
 				elif [ -f "/tmp/lantiq-vrx200-b.bin" ]; then
 					firmware="/tmp/lantiq-vrx200-b.bin"
@@ -306,8 +308,6 @@ start_service() {
 }
 
 stop_service() {
-	# do not use dsl_cmd to not block when this is locked up by some other proess
-	echo quit > /tmp/pipe/dsl_cpe0_cmd
 	DSL_NOTIFICATION_TYPE="DSL_INTERFACE_STATUS" \
 	DSL_INTERFACE_STATUS="DOWN" \
 		/sbin/dsl_notify.sh

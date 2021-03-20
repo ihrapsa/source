@@ -6,23 +6,12 @@
 export IMAGE="$1"
 COMMAND="$2"
 
-export ARGV="$IMAGE"
-export ARGC=1
-
-export SAVE_CONFIG=1
-export SAVE_PARTITIONS=1
-
 export INTERACTIVE=0
 export VERBOSE=1
 export CONFFILES=/tmp/sysupgrade.conffiles
-export CONF_TAR=/tmp/sysupgrade.tgz
 
 RAMFS_COPY_BIN=		# extra programs for temporary ramfs root
 RAMFS_COPY_DATA=	# extra data files
-
-
-[ -f "$CONF_TAR" ] || export SAVE_CONFIG=0
-[ -f /tmp/sysupgrade.always.overwrite.bootdisk.partmap ] && export SAVE_PARTITIONS=0
 
 include /lib/upgrade
 
@@ -50,21 +39,21 @@ switch_to_ramfs() {
 		md5sum hexdump cat zcat bzcat dd tar			\
 		ls basename find cp mv rm mkdir rmdir mknod touch chmod \
 		'[' printf wc grep awk sed cut				\
-		mtd partx losetup mkfs.ext4				\
+		mtd partx losetup mkfs.ext4 nandwrite flash_erase	\
 		ubiupdatevol ubiattach ubiblock ubiformat		\
 		ubidetach ubirsvol ubirmvol ubimkvol			\
-		snapshot snapshot_tool					\
+		snapshot snapshot_tool date				\
 		$RAMFS_COPY_BIN
 	do
-		local file="$(which "$binary" 2>/dev/null)"
+		local file="$(command -v "$binary" 2>/dev/null)"
 		[ -n "$file" ] && install_bin "$file"
 	done
-	install_file /etc/resolv.conf /lib/*.sh /lib/functions/*.sh /lib/upgrade/*.sh $RAMFS_COPY_DATA
+	install_file /etc/resolv.conf /lib/*.sh /lib/functions/*.sh /lib/upgrade/*.sh /lib/upgrade/do_stage2 /usr/share/libubox/jshn.sh $RAMFS_COPY_DATA
 
 	[ -L "/lib64" ] && ln -s /lib $RAM_ROOT/lib64
 
 	supivot $RAM_ROOT /mnt || {
-		echo "Failed to switch over to ramfs. Please reboot."
+		v "Failed to switch over to ramfs. Please reboot."
 		exit 1
 	}
 
@@ -86,7 +75,7 @@ kill_remaining() { # [ <signal> [ <loop> ] ]
 	local stat
 	local proc_ppid=$(cut -d' ' -f4  /proc/$$/stat)
 
-	echo -n "Sending $sig to remaining processes ... "
+	vn "Sending $sig to remaining processes ..."
 
 	while $run; do
 		run=false
@@ -106,7 +95,7 @@ kill_remaining() { # [ <signal> [ <loop> ] ]
 			# Skip kernel threads
 			[ -n "$cmdline" ] || continue
 
-			echo -n "$name "
+			_vn " $name"
 			kill -$sig $pid 2>/dev/null
 
 			[ $loop -eq 1 ] && run=true
@@ -114,14 +103,15 @@ kill_remaining() { # [ <signal> [ <loop> ] ]
 
 		let loop_limit--
 		[ $loop_limit -eq 0 ] && {
-			echo
-			echo "Failed to kill all processes."
+			_v
+			v "Failed to kill all processes."
 			exit 1
 		}
 	done
-	echo
+	_v
 }
 
+indicate_upgrade
 
 killall -9 telnetd
 killall -9 dropbear
@@ -133,16 +123,14 @@ kill_remaining KILL 1
 
 sleep 1
 
+echo 3 > /proc/sys/vm/drop_caches
 
 if [ -n "$IMAGE" ] && type 'platform_pre_upgrade' >/dev/null 2>/dev/null; then
-	IS_PRE_UPGRADE=1 platform_pre_upgrade "$IMAGE"
-
-	# Needs to be unset again because of busybox weirdness ...
-	IS_PRE_UPGRADE=
+	platform_pre_upgrade "$IMAGE"
 fi
 
 if [ -n "$(rootfs_type)" ]; then
-	echo "Switching to ramdisk..."
+	v "Switching to ramdisk..."
 	switch_to_ramfs
 fi
 

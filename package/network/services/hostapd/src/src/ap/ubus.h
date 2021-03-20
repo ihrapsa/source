@@ -18,21 +18,20 @@ enum hostapd_ubus_event_type {
 struct hostapd_ubus_request {
 	enum hostapd_ubus_event_type type;
 	const struct ieee80211_mgmt *mgmt_frame;
-	const struct hostapd_frame_info *frame_info;
+	const struct ieee802_11_elems *elems;
+	int ssi_signal; /* dBm */
 	const u8 *addr;
 };
 
 struct hostapd_iface;
 struct hostapd_data;
+struct hapd_interfaces;
+struct rrm_measurement_beacon_report;
 
 #ifdef UBUS_SUPPORT
 
 #include <libubox/avl.h>
 #include <libubus.h>
-
-struct hostapd_ubus_iface {
-	struct ubus_object obj;
-};
 
 struct hostapd_ubus_bss {
 	struct ubus_object obj;
@@ -47,10 +46,15 @@ void hostapd_ubus_free_bss(struct hostapd_data *hapd);
 
 int hostapd_ubus_handle_event(struct hostapd_data *hapd, struct hostapd_ubus_request *req);
 void hostapd_ubus_notify(struct hostapd_data *hapd, const char *type, const u8 *mac);
+void hostapd_ubus_notify_beacon_report(struct hostapd_data *hapd,
+				       const u8 *addr, u8 token, u8 rep_mode,
+				       struct rrm_measurement_beacon_report *rep,
+				       size_t len);
+
+void hostapd_ubus_add(struct hapd_interfaces *interfaces);
+void hostapd_ubus_free(struct hapd_interfaces *interfaces);
 
 #else
-
-struct hostapd_ubus_iface {};
 
 struct hostapd_ubus_bss {};
 
@@ -76,6 +80,22 @@ static inline int hostapd_ubus_handle_event(struct hostapd_data *hapd, struct ho
 }
 
 static inline void hostapd_ubus_notify(struct hostapd_data *hapd, const char *type, const u8 *mac)
+{
+}
+
+static inline void hostapd_ubus_notify_beacon_report(struct hostapd_data *hapd,
+						     const u8 *addr, u8 token,
+						     u8 rep_mode,
+						     struct rrm_measurement_beacon_report *rep,
+						     size_t len)
+{
+}
+
+static inline void hostapd_ubus_add(struct hapd_interfaces *interfaces)
+{
+}
+
+static inline void hostapd_ubus_free(struct hapd_interfaces *interfaces)
 {
 }
 #endif

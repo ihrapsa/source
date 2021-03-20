@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2007-2016 OpenWrt.org
+# Copyright (C) 2007-2021 OpenWrt.org
 # Copyright (C) 2010 Vertical Communications
 #
 # This is free software, licensed under the GNU General Public License v2.
@@ -12,11 +12,11 @@ include $(INCLUDE_DIR)/version.mk
 include $(INCLUDE_DIR)/feeds.mk
 
 PKG_NAME:=base-files
-PKG_RELEASE:=192
 PKG_FLAGS:=nonshared
+PKG_RELEASE:=$(COMMITCOUNT)
 
 PKG_FILE_DEPENDS:=$(PLATFORM_DIR)/ $(GENERIC_PLATFORM_DIR)/base-files/
-PKG_BUILD_DEPENDS:=usign/host
+PKG_BUILD_DEPENDS:=usign/host ucert/host
 PKG_LICENSE:=GPL-2.0
 
 # Extend depends from version.mk
@@ -37,7 +37,7 @@ endif
 define Package/base-files
   SECTION:=base
   CATEGORY:=Base system
-  DEPENDS:=+netifd +libc +procd +jsonfilter +SIGNED_PACKAGES:usign +SIGNED_PACKAGES:openwrt-keyring +NAND_SUPPORT:ubi-utils +fstools +fwtool
+  DEPENDS:=+netifd +libc +jsonfilter +SIGNED_PACKAGES:usign +SIGNED_PACKAGES:openwrt-keyring +NAND_SUPPORT:ubi-utils +fstools +fwtool
   TITLE:=Base filesystem for OpenWrt
   URL:=http://openwrt.org/
   VERSION:=$(PKG_RELEASE)-$(REVISION)
@@ -49,6 +49,7 @@ define Package/base-files/conffiles
 /etc/config/system
 /etc/crontabs/
 /etc/dropbear/
+/etc/ethers
 /etc/group
 /etc/hosts
 /etc/inittab
@@ -62,6 +63,7 @@ define Package/base-files/conffiles
 /etc/services
 /etc/shadow
 /etc/shells
+/etc/shinit
 /etc/sysctl.conf
 /etc/sysupgrade.conf
 $(call $(TARGET)/conffiles)
@@ -102,13 +104,18 @@ ifdef CONFIG_SIGNED_PACKAGES
 	[ -s $(BUILD_KEY) -a -s $(BUILD_KEY).pub ] || \
 		$(STAGING_DIR_HOST)/bin/usign -G -s $(BUILD_KEY) -p $(BUILD_KEY).pub -c "Local build key"
 
+	[ -s $(BUILD_KEY).ucert ] || \
+		$(STAGING_DIR_HOST)/bin/ucert -I -c $(BUILD_KEY).ucert -p $(BUILD_KEY).pub -s $(BUILD_KEY)
+
   endef
 
+ifndef CONFIG_BUILDBOT
   define Package/base-files/install-key
 	mkdir -p $(1)/etc/opkg/keys
 	$(CP) $(BUILD_KEY).pub $(1)/etc/opkg/keys/`$(STAGING_DIR_HOST)/bin/usign -F -p $(BUILD_KEY).pub`
 
   endef
+endif
 endif
 
 ifeq ($(CONFIG_NAND_SUPPORT),)
@@ -185,12 +192,19 @@ define Package/base-files/install
 
 	$(if $(CONFIG_INCLUDE_CONFIG), \
 		echo -e "# Build configuration for board $(BOARD)/$(SUBTARGET)/$(PROFILE)\n" >$(1)/etc/build.config; \
-		cat $(BIN_DIR)/config.seed >>$(1)/etc/build.config)
+		cat $(BIN_DIR)/config.buildinfo >>$(1)/etc/build.config; \
+		cat $(BIN_DIR)/feeds.buildinfo >>$(1)/etc/build.feeds; \
+		cat $(BIN_DIR)/version.buildinfo >>$(1)/etc/build.version)
 
 	$(if $(CONFIG_CLEAN_IPKG),, \
 		mkdir -p $(1)/etc/opkg; \
 		$(call FeedSourcesAppend,$(1)/etc/opkg/distfeeds.conf); \
 		$(VERSION_SED_SCRIPT) $(1)/etc/opkg/distfeeds.conf)
+	$(if $(CONFIG_IPK_FILES_CHECKSUMS),, \
+		rm -f $(1)/sbin/pkg_check)
+
+	$(if $(CONFIG_TARGET_PREINIT_DISABLE_FAILSAFE), \
+		rm -f $(1)/etc/banner.failsafe,)
 endef
 
 ifneq ($(DUMP),1)

@@ -1,11 +1,17 @@
+/dts-v1/;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
 	compatible = "ralink,mt7620a-soc";
 
 	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		cpu@0 {
 			compatible = "mips,mips24KEc";
+			reg = <0>;
 		};
 	};
 
@@ -13,7 +19,7 @@
 		bootargs = "console=ttyS0,57600";
 	};
 
-	cpuintc: cpuintc@0 {
+	cpuintc: cpuintc {
 		#address-cells = <0>;
 		#interrupt-cells = <1>;
 		interrupt-controller;
@@ -311,106 +317,113 @@
 
 		pcm_i2s_pins: pcm_i2s {
 			pcm_i2s {
-				ralink,group = "uartf";
-				ralink,function = "pcm i2s";
+				groups = "uartf";
+				function = "pcm i2s";
 			};
 		};
 
 		uartf_gpio_pins: uartf_gpio {
 			uartf_gpio {
-				ralink,group = "uartf";
-				ralink,function = "gpio uartf";
+				groups = "uartf";
+				function = "gpio uartf";
 			};
 		};
 
 		gpio_i2s_pins: gpio_i2s {
 			gpio_i2s {
-				ralink,group = "uartf";
-				ralink,function = "gpio i2s";
+				groups = "uartf";
+				function = "gpio i2s";
 			};
 		};
 
-		spi_pins: spi {
-			spi {
-				ralink,group = "spi";
-				ralink,function = "spi";
+		spi_pins: spi_pins {
+			spi_pins {
+				groups = "spi";
+				function = "spi";
 			};
 		};
 
 		spi_cs1: spi1 {
 			spi1 {
-				ralink,group = "spi_cs1";
-				ralink,function = "spi_cs1";
+				groups = "spi refclk";
+				function = "spi refclk";
 			};
 		};
 
-		i2c_pins: i2c {
-			i2c {
-				ralink,group = "i2c";
-				ralink,function = "i2c";
+		i2c_pins: i2c_pins {
+			i2c_pins {
+				groups = "i2c";
+				function = "i2c";
 			};
 		};
 
 		uartlite_pins: uartlite {
 			uart {
-				ralink,group = "uartlite";
-				ralink,function = "uartlite";
+				groups = "uartlite";
+				function = "uartlite";
 			};
 		};
 
 		mdio_pins: mdio {
 			mdio {
-				ralink,group = "mdio";
-				ralink,function = "mdio";
+				groups = "mdio";
+				function = "mdio";
 			};
 		};
 
 		mdio_refclk_pins: mdio_refclk {
 			mdio_refclk {
-				ralink,group = "mdio";
-				ralink,function = "refclk";
+				groups = "mdio";
+				function = "refclk";
 			};
 		};
 
 		ephy_pins: ephy {
 			ephy {
-				ralink,group = "ephy";
-				ralink,function = "ephy";
+				groups = "ephy";
+				function = "ephy";
 			};
 		};
 
 		wled_pins: wled {
 			wled {
-				ralink,group = "wled";
-				ralink,function = "wled";
+				groups = "wled";
+				function = "wled";
 			};
 		};
 
 		rgmii1_pins: rgmii1 {
 			rgmii1 {
-				ralink,group = "rgmii1";
-				ralink,function = "rgmii1";
+				groups = "rgmii1";
+				function = "rgmii1";
 			};
 		};
 
 		rgmii2_pins: rgmii2 {
 			rgmii2 {
-				ralink,group = "rgmii2";
-				ralink,function = "rgmii2";
+				groups = "rgmii2";
+				function = "rgmii2";
 			};
 		};
 
 		pcie_pins: pcie {
 			pcie {
-				ralink,group = "pcie";
-				ralink,function = "pcie rst";
+				groups = "pcie";
+				function = "pcie rst";
 			};
 		};
 
 		pa_pins: pa {
 			pa {
-				ralink,group = "pa";
-				ralink,function = "pa";
+				groups = "pa";
+				function = "pa";
+			};
+		};
+
+		sdhci_pins: sdhci {
+			sdhci {
+				groups = "nd_sd";
+				function = "sd";
 			};
 		};
 	};
@@ -492,10 +505,15 @@
 		interrupt-parent = <&intc>;
 		interrupts = <14>;
 
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdhci_pins>;
+
 		status = "disabled";
 	};
 
 	ehci: ehci@101c0000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "generic-ehci";
 		reg = <0x101c0000 0x1000>;
 
@@ -506,9 +524,16 @@
 		phy-names = "usb";
 
 		status = "disabled";
+
+		ehci_port1: port@1 {
+			reg = <1>;
+			#trigger-source-cells = <0>;
+		};
 	};
 
 	ohci: ohci@101c1000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "generic-ohci";
 		reg = <0x101c1000 0x1000>;
 
@@ -519,6 +544,11 @@
 		phy-names = "usb";
 
 		status = "disabled";
+
+		ohci_port1: port@1 {
+			reg = <1>;
+			#trigger-source-cells = <0>;
+		};
 	};
 
 	pcie: pcie@10140000 {
@@ -551,13 +581,15 @@
 
 		status = "disabled";
 
-		pcie-bridge {
+		pcie0: pcie@0,0 {
 			reg = <0x0000 0 0 0 0>;
 
 			#address-cells = <3>;
 			#size-cells = <2>;
 
 			device_type = "pci";
+
+			ranges;
 		};
 	};
 

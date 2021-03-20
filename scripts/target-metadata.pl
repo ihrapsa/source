@@ -20,6 +20,7 @@ sub target_config_features(@) {
 		/^usb$/ and $ret .= "\tselect USB_SUPPORT\n";
 		/^usbgadget$/ and $ret .= "\tselect USB_GADGET_SUPPORT\n";
 		/^pcmcia$/ and $ret .= "\tselect PCMCIA_SUPPORT\n";
+		/^pwm$/ and $ret .= "\select PWM_SUPPORT\n";
 		/^rtc$/ and $ret .= "\tselect RTC_SUPPORT\n";
 		/^squashfs$/ and $ret .= "\tselect USES_SQUASHFS\n";
 		/^jffs2$/ and $ret .= "\tselect USES_JFFS2\n";
@@ -40,6 +41,9 @@ sub target_config_features(@) {
 		/^small_flash$/ and $ret .= "\tselect SMALL_FLASH\n";
 		/^nand$/ and $ret .= "\tselect NAND_SUPPORT\n";
 		/^virtio$/ and $ret .= "\tselect VIRTIO_SUPPORT\n";
+		/^rootfs-part$/ and $ret .= "\tselect USES_ROOTFS_PART\n";
+		/^boot-part$/ and $ret .= "\tselect USES_BOOT_PART\n";
+		/^testing-kernel$/ and $ret .= "\tselect HAS_TESTING_KERNEL\n";
 	}
 	return $ret;
 }
@@ -81,11 +85,14 @@ sub print_target($) {
 	}
 
 	my $v = kver($target->{version});
+	my $tv = kver($target->{testing_version});
+	$tv or $tv = $v;
 	if (@{$target->{subtargets}} == 0) {
 	$confstr = <<EOF;
 config TARGET_$target->{conf}
 	bool "$target->{name}"
-	select LINUX_$v
+	select LINUX_$v if !TESTING_KERNEL
+	select LINUX_$tv if TESTING_KERNEL
 EOF
 	}
 	else {
@@ -168,7 +175,7 @@ EOF
 	print <<EOF;
 choice
 	prompt "Target System"
-	default TARGET_ar71xx
+	default TARGET_ath79
 	reset if !DEVEL
 	
 EOF
@@ -233,6 +240,7 @@ config TARGET_$target->{conf}_$profile->{id}
 	bool "$profile->{name}"
 	depends on TARGET_$target->{conf}
 EOF
+			$profile->{broken} and print "\tdepends on BROKEN\n";
 			my @pkglist = merge_package_lists($target->{packages}, $profile->{packages});
 			foreach my $pkg (@pkglist) {
 				print "\tselect DEFAULT_$pkg\n";
@@ -290,8 +298,9 @@ EOF
 menuconfig TARGET_DEVICE_$target->{conf}_$profile->{id}
 	bool "$profile->{name}"
 	depends on TARGET_$target->{conf}
-	default y if TARGET_ALL_PROFILES
+	default $profile->{default}
 EOF
+			$profile->{broken} and print "\tdepends on BROKEN\n";
 			my @pkglist = merge_package_lists($target->{packages}, $profile->{packages});
 			foreach my $pkg (@pkglist) {
 				print "\tselect DEFAULT_$pkg if !TARGET_PER_DEVICE_ROOTFS\n";
@@ -385,15 +394,18 @@ EOF
 
 	my %kver;
 	foreach my $target (@target) {
-		my $v = kver($target->{version});
-		next if $kver{$v};
-		$kver{$v} = 1;
-		print <<EOF;
+		foreach my $tv ($target->{version}, $target->{testing_version}) {
+			next unless $tv;
+			my $v = kver($tv);
+			next if $kver{$v};
+			$kver{$v} = 1;
+			print <<EOF;
 
 config LINUX_$v
 	bool
 
 EOF
+		}
 	}
 	foreach my $def (sort keys %defaults) {
 		print <<EOF;
@@ -417,9 +429,14 @@ sub gen_profile_mk() {
 	my @targets = parse_target_metadata($file);
 	foreach my $cur (@targets) {
 		next unless $cur->{id} eq $target;
-		print "PROFILE_NAMES = ".join(" ", map { $_->{id} } @{$cur->{profiles}})."\n";
+		my @profile_ids_unique =  do { my %seen; grep { !$seen{$_}++} map { $_->{id} } @{$cur->{profiles}}};
+		print "PROFILE_NAMES = ".join(" ", @profile_ids_unique)."\n";
 		foreach my $profile (@{$cur->{profiles}}) {
 			print $profile->{id}.'_NAME:='.$profile->{name}."\n";
+			print $profile->{id}.'_HAS_IMAGE_METADATA:='.$profile->{has_image_metadata}."\n";
+			if (defined($profile->{supported_devices}) and @{$profile->{supported_devices}} > 0) {
+				print $profile->{id}.'_SUPPORTED_DEVICES:='.join(' ', @{$profile->{supported_devices}})."\n";
+			}
 			print $profile->{id}.'_PACKAGES:='.join(' ', @{$profile->{packages}})."\n";
 		}
 	}

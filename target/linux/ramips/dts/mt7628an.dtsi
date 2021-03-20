@@ -1,11 +1,17 @@
+/dts-v1/;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
 	compatible = "mediatek,mt7628an-soc";
 
 	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		cpu@0 {
 			compatible = "mips,mips24KEc";
+			reg = <0>;
 		};
 	};
 
@@ -17,7 +23,7 @@
 		serial0 = &uartlite;
 	};
 
-	cpuintc: cpuintc@0 {
+	cpuintc: cpuintc {
 		#address-cells = <0>;
 		#interrupt-cells = <1>;
 		interrupt-controller;
@@ -77,36 +83,18 @@
 			interrupts = <3>;
 		};
 
-		gpio@600 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			compatible = "mtk,mt7628-gpio", "mtk,mt7621-gpio";
+		gpio: gpio@600 {
+			compatible = "mediatek,mt7621-gpio";
 			reg = <0x600 0x100>;
 
 			interrupt-parent = <&intc>;
 			interrupts = <6>;
 
-			gpio0: bank@0 {
-				reg = <0>;
-				compatible = "mtk,mt7621-gpio-bank";
-				gpio-controller;
-				#gpio-cells = <2>;
-			};
+			#interrupt-cells = <2>;
+			interrupt-controller;
 
-			gpio1: bank@1 {
-				reg = <1>;
-				compatible = "mtk,mt7621-gpio-bank";
-				gpio-controller;
-				#gpio-cells = <2>;
-			};
-
-			gpio2: bank@2 {
-				reg = <2>;
-				compatible = "mtk,mt7621-gpio-bank";
-				gpio-controller;
-				#gpio-cells = <2>;
-			};
+			gpio-controller;
+			#gpio-cells = <2>;
 		};
 
 		i2c: i2c@900 {
@@ -228,6 +216,7 @@
 		pwm: pwm@5000 {
 			compatible = "mediatek,mt7628-pwm";
 			reg = <0x5000 0x1000>;
+			#pwm-cells = <2>;
 
 			resets = <&rstctrl 31>;
 			reset-names = "pwm";
@@ -277,87 +266,87 @@
 		state_default: pinctrl0 {
 		};
 
-		spi_pins: spi {
-			spi {
-				ralink,group = "spi";
-				ralink,function = "spi";
+		spi_pins: spi_pins {
+			spi_pins {
+				groups = "spi";
+				function = "spi";
 			};
 		};
 
 		spi_cs1_pins: spi_cs1 {
 			spi_cs1 {
-				ralink,group = "spi cs1";
-				ralink,function = "spi cs1";
+				groups = "spi cs1";
+				function = "spi cs1";
 			};
 		};
 
-		i2c_pins: i2c {
-			i2c {
-				ralink,group = "i2c";
-				ralink,function = "i2c";
+		i2c_pins: i2c_pins {
+			i2c_pins {
+				groups = "i2c";
+				function = "i2c";
 			};
 		};
 
 		i2s_pins: i2s {
 			i2s {
-				ralink,group = "i2s";
-				ralink,function = "i2s";
+				groups = "i2s";
+				function = "i2s";
 			};
 		};
 
 		uart0_pins: uartlite {
 			uartlite {
-				ralink,group = "uart0";
-				ralink,function = "uart0";
+				groups = "uart0";
+				function = "uart0";
 			};
 		};
 
 		uart1_pins: uart1 {
 			uart1 {
-				ralink,group = "uart1";
-				ralink,function = "uart1";
+				groups = "uart1";
+				function = "uart1";
 			};
 		};
 
 		uart2_pins: uart2 {
 			uart2 {
-				ralink,group = "uart2";
-				ralink,function = "uart2";
+				groups = "uart2";
+				function = "uart2";
 			};
 		};
 
 		sdxc_pins: sdxc {
 			sdxc {
-				ralink,group = "sdmode";
-				ralink,function = "sdxc";
+				groups = "sdmode";
+				function = "sdxc";
 			};
 		};
 
 		pwm0_pins: pwm0 {
 			pwm0 {
-				ralink,group = "pwm0";
-				ralink,function = "pwm0";
+				groups = "pwm0";
+				function = "pwm0";
 			};
 		};
 
 		pwm1_pins: pwm1 {
 			pwm1 {
-				ralink,group = "pwm1";
-				ralink,function = "pwm1";
+				groups = "pwm1";
+				function = "pwm1";
 			};
 		};
 
 		pcm_i2s_pins: pcm_i2s {
 			pcm_i2s {
-				ralink,group = "i2s";
-				ralink,function = "pcm";
+				groups = "i2s";
+				function = "pcm";
 			};
 		};
 
 		refclk_pins: refclk {
 			refclk {
-				ralink,group = "refclk";
-				ralink,function = "refclk";
+				groups = "refclk";
+				function = "refclk";
 			};
 		};
 	};
@@ -398,6 +387,8 @@
 	};
 
 	ehci: ehci@101c0000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "generic-ehci";
 		reg = <0x101c0000 0x1000>;
 
@@ -406,9 +397,16 @@
 
 		interrupt-parent = <&intc>;
 		interrupts = <18>;
+
+		ehci_port1: port@1 {
+			reg = <1>;
+			#trigger-source-cells = <0>;
+		};
 	};
 
 	ohci: ohci@101c1000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "generic-ohci";
 		reg = <0x101c1000 0x1000>;
 
@@ -417,6 +415,11 @@
 
 		interrupt-parent = <&intc>;
 		interrupts = <18>;
+
+		ohci_port1: port@1 {
+			reg = <1>;
+			#trigger-source-cells = <0>;
+		};
 	};
 
 	ethernet: ethernet@10100000 {
@@ -469,13 +472,15 @@
 			0x01000000 0 0x00000000 0x10160000 0 0x00010000 /* io space */
 		>;
 
-		pcie-bridge {
+		pcie0: pcie@0,0 {
 			reg = <0x0000 0 0 0 0>;
 
 			#address-cells = <3>;
 			#size-cells = <2>;
 
 			device_type = "pci";
+
+			ranges;
 		};
 	};
 

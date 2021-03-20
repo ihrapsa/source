@@ -2,6 +2,9 @@ source "tmp/.config-target.in"
 
 # Kernel/Hardware features
 
+config HAS_TESTING_KERNEL
+	bool
+
 config HAS_SPE_FPU
 	depends on powerpc
 	select HAS_FPU
@@ -26,6 +29,9 @@ config PCIE_SUPPORT
 config PCMCIA_SUPPORT
 	bool
 
+config PWM_SUPPORT
+	bool
+
 config USB_SUPPORT
 	select AUDIO_SUPPORT
 	bool
@@ -34,8 +40,7 @@ config USB_GADGET_SUPPORT
 	bool
 
 config RTC_SUPPORT
-	tristate
-	depends on m
+	bool
 
 config BIG_ENDIAN
 	bool
@@ -94,6 +99,12 @@ config ARCH_64BIT
 	bool
 
 config VIRTIO_SUPPORT
+	bool
+
+config USES_ROOTFS_PART
+	bool
+
+config USES_BOOT_PART
 	bool
 
 # Architecture selection

@@ -131,6 +131,7 @@ sub parse_target_metadata($) {
 		/^Target-Optimization:\s*(.+)\s*$/ and $target->{cflags} = $1;
 		/^CPU-Type:\s*(.+)\s*$/ and $target->{cputype} = $1;
 		/^Linux-Version:\s*(.+)\s*$/ and $target->{version} = $1;
+		/^Linux-Testing-Version:\s*(.+)\s*$/ and $target->{testing_version} = $1;
 		/^Linux-Release:\s*(.+)\s*$/ and $target->{release} = $1;
 		/^Linux-Kernel-Arch:\s*(.+)\s*$/ and $target->{karch} = $1;
 		/^Default-Subtarget:\s*(.+)\s*$/ and $target->{def_subtarget} = $1;
@@ -139,19 +140,29 @@ sub parse_target_metadata($) {
 			$profile = {
 				id => $1,
 				name => $1,
+				has_image_metadata => 0,
+				supported_devices => [],
 				priority => 999,
-				packages => []
+				packages => [],
+				default => "y if TARGET_ALL_PROFILES"
 			};
 			$1 =~ /^DEVICE_/ and $target->{has_devices} = 1;
 			push @{$target->{profiles}}, $profile;
 		};
 		/^Target-Profile-Name:\s*(.+)\s*$/ and $profile->{name} = $1;
+		/^Target-Profile-hasImageMetadata:\s*(\d+)\s*$/ and $profile->{has_image_metadata} = $1;
+		/^Target-Profile-SupportedDevices:\s*(.+)\s*$/ and $profile->{supported_devices} = [ split(/\s+/, $1) ];
 		/^Target-Profile-Priority:\s*(\d+)\s*$/ and do {
 			$profile->{priority} = $1;
 			$target->{sort} = 1;
 		};
 		/^Target-Profile-Packages:\s*(.*)\s*$/ and $profile->{packages} = [ split(/\s+/, $1) ];
 		/^Target-Profile-Description:\s*(.*)\s*/ and $profile->{desc} = get_multiline(*FILE);
+		/^Target-Profile-Broken:\s*(.+)\s*$/ and do {
+			$profile->{broken} = 1;
+			$profile->{default} = "n";
+		};
+		/^Target-Profile-Default:\s*(.+)\s*$/ and $profile->{default} = $1;
 	}
 	close FILE;
 	foreach my $target (@target) {
@@ -250,6 +261,7 @@ sub parse_package_metadata($) {
 			my @vpkg = split /\s+/, $1;
 			@{$pkg->{provides}} = ($pkg->{name}, @vpkg);
 			foreach my $vpkg (@vpkg) {
+				next if ($vpkg eq $pkg->{name});
 				$vpackage{$vpkg} or $vpackage{$vpkg} = [];
 				push @{$vpackage{$vpkg}}, $pkg;
 			}

@@ -1,11 +1,17 @@
+/dts-v1/;
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
 	compatible = "ralink,rt2880-soc";
 
 	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		cpu@0 {
 			compatible = "mips,mips24KEc";
+			reg = <0>;
 		};
 	};
 
@@ -17,7 +23,7 @@
 		serial0 = &uartlite;
 	};
 
-	cpuintc: cpuintc@0 {
+	cpuintc: cpuintc {
 		#address-cells = <0>;
 		#interrupt-cells = <1>;
 		interrupt-controller;
@@ -149,29 +155,29 @@
 
 		state_default: pinctrl0 {
 			sdram {
-				ralink,group = "sdram";
-				ralink,function = "sdram";
+				groups = "sdram";
+				function = "sdram";
 			};
 		};
 
-		i2c_pins: i2c {
-			i2c {
-				ralink,group = "i2c";
-				ralink,function = "i2c";
+		i2c_pins: i2c_pins {
+			i2c_pins {
+				groups = "i2c";
+				function = "i2c";
 			};
 		};
 
-		spi_pins: spi {
-			spi {
-				ralink,group = "spi";
-				ralink,function = "spi";
+		spi_pins: spi_pins {
+			spi_pins {
+				groups = "spi";
+				function = "spi";
 			};
 		};
 
 		uartlite_pins: uartlite {
 			uart {
-				ralink,group = "uartlite";
-				ralink,function = "uartlite";
+				groups = "uartlite";
+				function = "uartlite";
 			};
 		};
 	};
@@ -189,8 +195,8 @@
 	pci: pci@440000 {
 		compatible = "ralink,rt288x-pci";
 		reg = <0x00440000 0x20000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <3>;
+		#size-cells = <2>;
 		status = "disabled";
 	};
 
