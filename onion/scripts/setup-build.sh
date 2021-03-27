@@ -9,3 +9,6 @@ cat onion/config/onion.feeds.conf >> feeds.conf
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+# Copy config file
+cp onion/config/.config .
+
