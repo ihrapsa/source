@@ -10,6 +10,7 @@ uci -q batch <<-EOF > /dev/null
 	set network.wwan='interface'
 	set network.wwan.proto='dhcp'
 	set network.wwan.hostname='OnionOmega2'
+	set network.lan.ipaddr='192.168.4.1'
 	commit network
 
 	set wireless.@wifi-device[0].disabled='0'
