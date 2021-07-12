@@ -6,6 +6,26 @@ include ./common-tp-link.mk
 
 DEFAULT_SOC := mt7628an
 
+define Build/creality_wb-01-factory
+  echo '#!/bin/sh' > $@.install.sh
+  echo 'kernel_size=851968' >> $@.install.sh
+  echo 'file=$$2/factory.bin' >> $@.install.sh
+  echo 'file_size=$$(wc -c < $$file)' >> $@.install.sh
+  echo 'fs_size=$$((file_size - kernel_size))' >> $@.install.sh
+  echo 'mtd_write -o 0 -l $$kernel_size write $$file Kernel' \
+    >> $@.install.sh
+  echo 'mtd_write -r -o $$kernel_size -l $$fs_size write $$file RootFS' \
+    >> $@.install.sh
+
+  tar cjf $@.tar.bz2 -C $(dir $@)  \
+    --transform="flags=r;s|$(notdir $@.install.sh)|install.sh|" \
+    --transform="flags=r;s|$(notdir $@)|factory.bin|" \
+    $(notdir $@ $@.install.sh) \
+
+  mv $@.tar.bz2 $@
+  rm $@.install.sh
+endef
+
 define Build/elecom-header
 	$(eval model_id=$(1))
 	( \
@@ -77,6 +97,22 @@ define Device/buffalo_wcr-1166ds
   SUPPORTED_DEVICES += wcr-1166ds
 endef
 TARGET_DEVICES += buffalo_wcr-1166ds
+
+define Device/creality_wb-01
+  IMAGE_SIZE := 16064k
+  IMAGES += factory.bin
+  IMAGE/factory.bin := $$(sysupgrade_bin) | creality_wb-01-factory
+  DEVICE_VENDOR := Creality
+  DEVICE_MODEL := WB-01
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci kmod-sdhci-mt7620 kmod-fs-ext4 kmod-usb-storage \
+  		     kmod-usb-uhci kmod-usb-acm kmod-usb-serial kmod-usb-serial-ch341 \
+		     kmod-usb-serial-cp210x kmod-usb-serial-ftdi kmod-usb-serial-pl2303 \
+		     kmod-video-core kmod-video-gspca-core kmod-video-gspca-zc3xx \
+		     kmod-video-uvc kmod-video-videobuf2 kmod-sound-core \
+		     kmod-zram kmod-lib-lz4 kmod-lib-zstd \
+		     block-mount e2fsprogs swap-utils fdisk
+endef
+TARGET_DEVICES += creality_wb-01
 
 define Device/cudy_wr1000
   IMAGE_SIZE := 7872k
